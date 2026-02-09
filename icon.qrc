@@ -1,0 +1,17 @@
+<RCC>
+    <qresource prefix="/menu">
+        <file>static/icon/createfile.svg</file>
+        <file>static/icon/openfile.svg</file>
+        <file>static/icon/edit.svg</file>
+        <file>static/icon/help.svg</file>
+        <file>static/icon/welcome.svg</file>
+        <file>static/icon/design-16.svg</file>
+        <file>static/icon/Docker.svg</file>
+        <file>static/icon/usermanager.svg</file>
+        <file>static/icon/系统监控.svg</file>
+        <file>static/icon/AIAssistance.svg</file>
+        <file>static/icon/algorithms5.svg</file>
+        <file>static/icon/data-view.svg</file>
+        <file>static/icon/msg.svg</file>
+    </qresource>
+</RCC>
