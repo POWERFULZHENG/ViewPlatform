@@ -18,10 +18,13 @@
 #include <QDateTime>
 #include <QApplication>
 #include <QTimer>
-#include <QDebug>
+#include "loghelper.h"
+#include "logmanager.h"
+#include "iphelper.h"
 #include <QTextCursor>
 #include <QTextCharFormat>
 #include <QStyle>
+#include <QFileInfo>  // 新增：用于获取文件信息
 
 // ---------- 构造与析构 ----------
 LLMWidget::LLMWidget(int currentUserId, QWidget *parent)
@@ -31,6 +34,7 @@ LLMWidget::LLMWidget(int currentUserId, QWidget *parent)
       m_currentUserId(currentUserId),
       m_currentDialogId(-1),
       m_selectedModelCode(),
+      m_fileContent(),
 
       // 2. 网络请求相关
       m_netManager(new QNetworkAccessManager(this)),
@@ -55,19 +59,22 @@ LLMWidget::LLMWidget(int currentUserId, QWidget *parent)
       m_dialogList(nullptr),
       m_chatContentEdit(nullptr),
       m_inputEdit(nullptr),
+      // 文件上传显示标签
+      m_uploadedFileLabel(nullptr),
 
       // 7. UI 控件（模型选择）
       m_modelCombo(nullptr),
       m_addModelBtn(nullptr)
+
 {
     // 保留原有构造函数内部逻辑，无修改
     if (m_currentUserId <= 0) {
-        qCritical() << "【致命】用户ID无效：" << m_currentUserId;
+        LOG_ERROR("LLM模块", "【致命】用户ID无效：" << m_currentUserId);
         QMessageBox::critical(nullptr, "致命错误", "用户ID无效，程序无法正常初始化！");
         return;
     }
 
-    qDebug() << "【LLMWidget】初始化，用户ID=" << m_currentUserId;
+    LOG_INFO("LLM模块", "【LLMWidget】初始化，用户ID=" << m_currentUserId);
     initUI();
 
     QTimer::singleShot(50, this, &LLMWidget::loadModelList);
@@ -76,7 +83,6 @@ LLMWidget::LLMWidget(int currentUserId, QWidget *parent)
 
 LLMWidget::~LLMWidget()
 {
-    qDebug() << "【LLMWidget】析构开始";
     // 安全清理网络请求
     if (m_currentReply) {
         if (!m_currentReply->isFinished()) {
@@ -85,15 +91,12 @@ LLMWidget::~LLMWidget()
         m_currentReply->deleteLater();
         m_currentReply = nullptr;
     }
-
-    qDebug() << "【LLMWidget】析构完成";
 }
 
-// ---------- UI 初始化（新增MathJax支持） ----------
-// ---------- UI 初始化（新增MathJax支持 + 历史对话标签） ----------
+// ---------- UI 初始化（新增MathJax支持 + 历史对话标签 + 文件上传显示） ----------
 void LLMWidget::initUI()
 {
-    qDebug() << "【UI】创建控件";
+    LOG_DEBUG("LLM模块", "【UI】创建控件");
 
     // ========== 顶部控件 ==========
     QPushButton *configBtn = new QPushButton("API配置", this);
@@ -165,21 +168,40 @@ void LLMWidget::initUI()
     m_chatContentEdit->setHtml(mathJaxHeader + "</body></html>");
 
     // 输入区域
-    m_inputEdit = new QLineEdit(this);
+    m_inputEdit = new QTextEdit(this);
     m_fileBtn = new QPushButton("选择文件", this);
     m_sendBtn = new QPushButton("发送", this);
     m_cancelBtn = new QPushButton("取消", this);
     m_cancelBtn->setEnabled(false);
 
-    // 底部布局
+    // 新增：文件上传信息显示标签
+    m_uploadedFileLabel = new QLabel(this);
+    m_uploadedFileLabel->setStyleSheet(R"(
+        QLabel {
+            color: #27ae60;
+            font-size: 12px;
+            padding: 2px 5px;
+            background-color: #f0f9f0;
+            border-radius: 3px;
+            border: 1px solid #d4ecd4;
+        }
+    )");
+    m_uploadedFileLabel->setVisible(false); // 初始隐藏
+    m_uploadedFileLabel->setToolTip("已上传的文件信息");
+
+    // 底部布局（修改：添加文件显示标签）
     QHBoxLayout *bottomLayout = new QHBoxLayout();
-    bottomLayout->addWidget(m_inputEdit);
+//    bottomLayout->addWidget(m_inputEdit);
     bottomLayout->addWidget(m_fileBtn);
+    bottomLayout->addWidget(m_uploadedFileLabel); // 添加文件显示标签
     bottomLayout->addWidget(m_sendBtn);
     bottomLayout->addWidget(m_cancelBtn);
 
     QVBoxLayout *rightLayout = new QVBoxLayout();
+    m_inputEdit->setMinimumHeight(20);
+    m_inputEdit->setMaximumHeight(50);
     rightLayout->addWidget(m_chatContentEdit);
+    rightLayout->addWidget(m_inputEdit);
     rightLayout->addLayout(bottomLayout);
 
     // 主布局（修改：添加封装后的左侧Widget）
@@ -204,25 +226,23 @@ void LLMWidget::initUI()
     connect(m_sendBtn, &QPushButton::clicked, this, &LLMWidget::onSendBtnClicked);
     connect(m_fileBtn, &QPushButton::clicked, this, &LLMWidget::onFileBtnClicked);
     connect(m_cancelBtn, &QPushButton::clicked, this, &LLMWidget::onCancelBtnClicked);
-    connect(m_inputEdit, &QLineEdit::returnPressed, this, &LLMWidget::onSendBtnClicked);
+//    connect(m_inputEdit, &QTextEdit::returnPressed, this, &LLMWidget::onSendBtnClicked);
 
     connect(m_modelCombo, static_cast<void (QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
             this, &LLMWidget::onModelChanged);
     connect(m_addModelBtn, &QPushButton::clicked, this, &LLMWidget::onAddModelBtnClicked);
-
-    qDebug() << "【UI】创建完毕";
 }
 
 // ---------- 历史对话加载 ----------
 void LLMWidget::loadHistoryDialogs()
 {
-    qDebug() << "【DB】加载历史对话 用户ID=" << m_currentUserId;
+    LOG_DEBUG("LLM模块", "【DB】加载历史对话 用户ID=" << m_currentUserId);
     if (!m_dialogList) return;
     m_dialogList->clear();
 
     BaseDbHelper *db = BaseDbHelper::getInstance();
     if (!db || !db->checkDbConn()) {
-        qCritical() << "【DB】数据库实例为空或未连接，加载历史对话失败";
+        LOG_ERROR("LLM模块", "【DB】数据库实例为空或未连接，加载历史对话失败");
         QMessageBox::warning(this, "警告", "数据库连接失败，无法加载历史对话！");
         return;
     }
@@ -230,7 +250,7 @@ void LLMWidget::loadHistoryDialogs()
     QString sql = QString("SELECT id, dialog_title FROM chat_dialog WHERE user_id = %1 ORDER BY update_time DESC").arg(m_currentUserId);
     QSqlQuery q = db->execQuery(sql);
     if (q.lastError().isValid()) {
-        qCritical() << "加载历史对话失败：" << q.lastError().text();
+        LOG_ERROR("LLM模块", "加载历史对话失败：" << q.lastError().text());
         QMessageBox::warning(this, "警告", "加载历史对话失败：" + q.lastError().text());
         return;
     }
@@ -250,19 +270,19 @@ void LLMWidget::loadHistoryDialogs()
             m_dialogList->setCurrentItem(it);
         }
     }
-    qDebug() << "【DB】历史对话加载完成，共" << m_dialogList->count();
+    LOG_DEBUG("LLM模块", "【DB】历史对话加载完成，共" << m_dialogList->count());
 }
 
 // ---------- 模型列表加载 ----------
 void LLMWidget::loadModelList()
 {
-    qDebug() << "【DB】加载模型列表";
+    LOG_DEBUG("LLM模块", "【DB】加载模型列表");
     if (!m_modelCombo) return;
     m_modelCombo->clear();
 
     BaseDbHelper *db = BaseDbHelper::getInstance();
     if (!db || !db->checkDbConn()) {
-        qCritical() << "【DB】数据库实例为空或未连接，加载模型列表失败";
+        LOG_ERROR("LLM模块", "【DB】数据库实例为空或未连接，加载模型列表失败");
         m_modelCombo->addItem("智谱GLM-4.7", "glm-4.7");
         m_selectedModelCode = "glm-4.7";
         QMessageBox::warning(this, "警告", "数据库连接失败，已加载默认模型！");
@@ -272,7 +292,7 @@ void LLMWidget::loadModelList()
 
     QSqlQuery q = db->execQuery("SELECT model_code, model_name, is_default FROM model_config ORDER BY is_default DESC");
     if (q.lastError().isValid()) {
-        qCritical() << "加载模型失败：" << q.lastError().text();
+        LOG_ERROR("LLM模块", "加载模型失败：" << q.lastError().text());
         m_modelCombo->addItem("智谱GLM-4.7", "glm-4.7");
         m_selectedModelCode = "glm-4.7";
         QMessageBox::warning(this, "警告", "加载模型失败，已加载默认模型：" + q.lastError().text());
@@ -308,7 +328,7 @@ void LLMWidget::loadModelList()
         m_modelCombo->blockSignals(false);
     }
     m_isInit = false;
-    qDebug() << "【DB】模型列表加载完成, 选中=" << m_selectedModelCode;
+    LOG_DEBUG("LLM模块", "【DB】模型列表加载完成, 选中=" << m_selectedModelCode);
 }
 
 // ---------- 对话保存（支持富文本+公式） ----------
@@ -351,7 +371,7 @@ bool LLMWidget::saveCurrentDialog()
 
     BaseDbHelper *db = BaseDbHelper::getInstance();
     if (!db || !db->checkDbConn()) {
-        qCritical() << "【DB】数据库未连接，保存对话失败";
+        LOG_ERROR("LLM模块", "【DB】数据库未连接，保存对话失败");
         QMessageBox::warning(this, "警告", "数据库未连接，无法保存对话！");
         return false;
     }
@@ -365,19 +385,19 @@ bool LLMWidget::saveCurrentDialog()
         query.addBindValue(json);
 
         if (!query.exec()) {
-            qCritical() << "Insert new dialog failed:" << query.lastError().text();
+            LOG_ERROR("LLM模块", "Insert new dialog failed:" << query.lastError().text());
             return false;
         }
 
         // --- Key: Get the newly inserted dialog ID ---
         m_currentDialogId = query.lastInsertId().toInt();
-        qDebug() << "【DB】New dialog created, ID=" << m_currentDialogId;
+        LOG_DEBUG("LLM模块", "【DB】New dialog created, ID=" << m_currentDialogId);
     } else {
         // Update existing dialog (original logic)
         QString sql = QString("UPDATE chat_dialog SET dialog_title = ?, dialog_content = ?, update_time = CURRENT_TIMESTAMP WHERE id = %1 AND user_id = %2").arg(m_currentDialogId).arg(m_currentUserId);
         QVariantList params = { title, json };
         if (!db->execPrepareSql(sql, params)) {
-            qCritical() << "Update dialog failed:" << db->getLastError();
+            LOG_ERROR("LLM模块", "Update dialog failed:" << db->getLastError());
             return false;
         }
     }
@@ -391,7 +411,7 @@ bool LLMWidget::loadDialogById(int dialogId)
 
     BaseDbHelper *db = BaseDbHelper::getInstance();
     if (!db || !db->checkDbConn()) {
-        qCritical() << "【DB】数据库未连接，加载对话失败";
+        LOG_ERROR("LLM模块", "【DB】数据库未连接，加载对话失败");
         QMessageBox::warning(this, "警告", "数据库未连接，无法加载对话！");
         return false;
     }
@@ -399,7 +419,7 @@ bool LLMWidget::loadDialogById(int dialogId)
     QString sql = QString("SELECT dialog_content FROM chat_dialog WHERE id = %1 AND user_id = %2").arg(dialogId).arg(m_currentUserId);
     QSqlQuery q = db->execQuery(sql);
     if (q.lastError().isValid()) {
-        qCritical() << "loadDialogById error:" << q.lastError().text();
+        LOG_ERROR("LLM模块", "loadDialogById error:" << q.lastError().text());
         return false;
     }
     if (!q.next()) return false;
@@ -407,7 +427,7 @@ bool LLMWidget::loadDialogById(int dialogId)
     QString json = q.value(0).toString();
     QJsonDocument doc = QJsonDocument::fromJson(json.toUtf8());
     if (doc.isNull() || !doc.isObject()) {
-        qCritical() << "对话 JSON 解析失败";
+        LOG_ERROR("LLM模块", "对话 JSON 解析失败");
         return false;
     }
 
@@ -442,14 +462,14 @@ QJsonObject LLMWidget::getApiConfig()
     QJsonObject cfg;
     BaseDbHelper *db = BaseDbHelper::getInstance();
     if (!db || !db->checkDbConn()) {
-        qCritical() << "【DB】数据库未连接，读取API配置失败";
+        LOG_ERROR("LLM模块", "【DB】数据库未连接，读取API配置失败");
         return cfg;
     }
 
     QString sql = QString("SELECT api_url, api_key, model, temperature FROM user_api_config WHERE user_id = %1").arg(m_currentUserId);
     QSqlQuery q = db->execQuery(sql);
     if (q.lastError().isValid()) {
-        qCritical() << "getApiConfig error:" << q.lastError().text();
+        LOG_ERROR("LLM模块", "getApiConfig error:" << q.lastError().text());
         return cfg;
     }
     if (!q.next()) return cfg;
@@ -465,12 +485,12 @@ bool LLMWidget::saveSelectedModel(const QString &modelCode)
 {
     QString trimmed = modelCode.trimmed();
     if (trimmed.isEmpty()) {
-        qCritical() << "模型编码为空";
+        LOG_ERROR("LLM模块", "模型编码为空");
         return false;
     }
     BaseDbHelper *db = BaseDbHelper::getInstance();
     if (!db || !db->checkDbConn()) {
-        qCritical() << "DB 未连接";
+        LOG_ERROR("LLM模块", "DB 未连接");
         QMessageBox::warning(this, "警告", "数据库未连接，无法保存模型！");
         return false;
     }
@@ -481,7 +501,7 @@ bool LLMWidget::saveSelectedModel(const QString &modelCode)
     )").arg(m_currentUserId);
     QVariantList params = { trimmed };
     bool ok = db->execPrepareSql(sql, params);
-    if (!ok) qCritical() << "保存模型失败:" << db->getLastError();
+    if (!ok) LOG_ERROR("LLM模块", "保存模型失败:" << db->getLastError());
     return ok;
 }
 
@@ -493,7 +513,7 @@ QString LLMWidget::extractFullContentFromResponse(const QByteArray &data)
     QJsonParseError err;
     QJsonDocument doc = QJsonDocument::fromJson(data, &err);
     if (doc.isNull() || !doc.isObject()) {
-        qCritical() << "响应JSON解析失败：" << err.errorString();
+        LOG_ERROR("LLM模块", "响应JSON解析失败：" << err.errorString());
         return "";
     }
 
@@ -604,8 +624,8 @@ void LLMWidget::onApiReplyFinished()
 
     // 打印响应日志
     QByteArray responseData = reply->readAll();
-    qDebug() << "【API响应】状态码：" << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-    qDebug() << "【API响应】原始数据：" << QString::fromUtf8(responseData);
+    LOG_DEBUG("LLM模块", "【API响应】状态码：" << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt());
+    LOG_DEBUG("LLM模块", "【API响应】原始数据：" << QString::fromUtf8(responseData));
     reply->seek(0);
 
     // 恢复UI状态
@@ -620,7 +640,7 @@ void LLMWidget::onApiReplyFinished()
     // 处理错误
     if (reply->error() != QNetworkReply::NoError) {
         if (reply->error() == QNetworkReply::OperationCanceledError) {
-            qDebug() << "用户已取消请求";
+            LOG_DEBUG("LLM模块", "用户已取消请求");
         } else {
             QString err = QString("<span style='color:#e74c3c;'>【系统】API请求失败：%1</span><br/>").arg(reply->errorString());
             if (m_chatContentEdit) {
@@ -628,7 +648,7 @@ void LLMWidget::onApiReplyFinished()
                     m_chatContentEdit->append(err);
                 }, Qt::QueuedConnection);
             }
-            qCritical() << "API 请求错误：" << reply->errorString();
+            LOG_ERROR("LLM模块", "API 请求错误：" << reply->errorString());
         }
         restoreUI();
         reply->deleteLater();
@@ -638,7 +658,7 @@ void LLMWidget::onApiReplyFinished()
 
     // 解析AI内容
     QString aiContent = extractFullContentFromResponse(responseData);
-    qDebug() << "【API响应】解析后的AI内容：" << aiContent;
+    LOG_DEBUG("LLM模块", "【API响应】解析后的AI内容：" << aiContent);
 
     // UI线程更新（核心：公式渲染）
     QMetaObject::invokeMethod(this, [this, aiContent]() {
@@ -767,9 +787,15 @@ void LLMWidget::sendApiRequest(const QString &content)
     if (isNewDialog && m_chatContentEdit) {
         if (saveCurrentDialog()) {
             loadHistoryDialogs(); // Refresh history list to show new dialog
-            qDebug() << "【UI】New dialog record created immediately after sending request";
+            LOG_DEBUG("LLM模块", "【UI】New dialog record created immediately after sending request");
         }
     }
+
+    ADD_BASE_LOG("LLM模块",
+                 QString("请求内容：[%1]").arg(content),
+                 m_currentUserId,
+                 "llm",
+                 IPHelper::getLocalIP());
 }
 
 // ---------- 取消请求槽函数 ----------
@@ -787,23 +813,31 @@ void LLMWidget::onCancelBtnClicked()
     m_currentReply->abort();
 }
 
-// ---------- 发送按钮槽函数 ----------
+// ---------- 发送按钮槽函数（修改：清空文件显示） ----------
 void LLMWidget::onSendBtnClicked()
 {
     if (m_isRequestProcessing || m_currentReply != nullptr) {
         QMessageBox::information(this, "提示", "当前有请求正在处理中，请等待或取消后再发送。");
         return;
     }
-    QString content = m_inputEdit ? m_inputEdit->text().trimmed() : QString();
+    QString content = m_inputEdit ? m_inputEdit->toPlainText().trimmed() : QString();
     if (content.isEmpty()) {
         QMessageBox::warning(this, "警告", "输入内容不能为空！");
         return;
     }
+    if(!m_fileContent.isEmpty()) content = "需求：" + content + ". 上传的内容为：" + m_fileContent;
     sendApiRequest(content);
+    m_fileContent.clear();
     m_inputEdit->clear(); // 发送后清空输入框
+
+    // 新增：清空并隐藏文件显示标签
+    if (m_uploadedFileLabel) {
+        m_uploadedFileLabel->clear();
+        m_uploadedFileLabel->setVisible(false);
+    }
 }
 
-// ---------- 文件上传槽函数 ----------
+// ---------- 文件上传槽函数（修改：添加UI显示逻辑） ----------
 void LLMWidget::onFileBtnClicked()
 {
     if (m_isRequestProcessing || m_currentReply != nullptr) {
@@ -813,15 +847,36 @@ void LLMWidget::onFileBtnClicked()
 
     QString filePath = QFileDialog::getOpenFileName(this, "选择文件", "", "文本文件 (*.txt);;所有文件 (*.*)");
     if (filePath.isEmpty()) return;
+
     QFile f(filePath);
     if (!f.open(QIODevice::ReadOnly | QIODevice::Text)) {
         QMessageBox::critical(this, "错误", "文件打开失败！");
         return;
     }
-    QString content = QString::fromUtf8(f.readAll());
+    m_fileContent = QString::fromUtf8(f.readAll());
     f.close();
-    QString sendContent = QString("分析以下李雅普诺夫函数控制器算法数据：%1").arg(content);
-    sendApiRequest(sendContent);
+
+    // 新增：获取文件信息并更新UI显示
+    QFileInfo fileInfo(filePath);
+    QString fileSizeStr;
+    qint64 fileSize = fileInfo.size();
+    // 格式化文件大小（B/KB/MB）
+    if (fileSize < 1024) {
+        fileSizeStr = QString("%1 B").arg(fileSize);
+    } else if (fileSize < 1024 * 1024) {
+        fileSizeStr = QString("%1 KB").arg(QString::number(fileSize / 1024.0, 'f', 1));
+    } else {
+        fileSizeStr = QString("%1 MB").arg(QString::number(fileSize / (1024.0 * 1024), 'f', 2));
+    }
+
+    // 设置文件显示标签内容
+    if (m_uploadedFileLabel) {
+        m_uploadedFileLabel->setText(QString("已上传：%1 (%2)").arg(fileInfo.fileName()).arg(fileSizeStr));
+        m_uploadedFileLabel->setVisible(true);
+    }
+
+    // 提示用户文件上传成功
+    QMessageBox::information(this, "成功", QString("文件「%1」上传成功！").arg(fileInfo.fileName()));
 }
 
 // ---------- 模型切换槽函数 ----------
@@ -869,7 +924,7 @@ void LLMWidget::onAddModelBtnClicked()
     loadModelList();
 }
 
-// ---------- 新建对话槽函数 ----------
+// ---------- 新建对话槽函数（修改：清空文件显示） ----------
 void LLMWidget::onNewDialogBtnClicked()
 {
     if (m_chatContentEdit && !m_chatContentEdit->toPlainText().isEmpty()) {
@@ -878,15 +933,30 @@ void LLMWidget::onNewDialogBtnClicked()
     m_currentDialogId = -1;
     if (m_chatContentEdit) m_chatContentEdit->clear();
     if (m_inputEdit) m_inputEdit->clear();
+
+    // 新增：清空文件内容和显示
+    m_fileContent.clear();
+    if (m_uploadedFileLabel) {
+        m_uploadedFileLabel->clear();
+        m_uploadedFileLabel->setVisible(false);
+    }
+
     loadHistoryDialogs();
 }
 
-// ---------- 对话项点击槽函数 ----------
+// ---------- 对话项点击槽函数（修改：清空文件显示） ----------
 void LLMWidget::onDialogItemClicked(QListWidgetItem *item)
 {
     if (!item) return;
     int id = item->data(Qt::UserRole).toInt();
     loadDialogById(id);
+
+    // 新增：切换对话时清空文件内容和显示
+    m_fileContent.clear();
+    if (m_uploadedFileLabel) {
+        m_uploadedFileLabel->clear();
+        m_uploadedFileLabel->setVisible(false);
+    }
 }
 
 // ---------- 折叠/展开列表槽函数 ----------

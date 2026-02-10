@@ -44,7 +44,7 @@ public:
     bool execBatchPrepareSql(const QString &sql, const QList<QVariantList> &paramsList);
 
     // 错误信息获取
-    QString getLastError() const;
+    QString getLastError();
 
 private:
     // 读取配置文件（通用层内部处理，业务层无需关心）

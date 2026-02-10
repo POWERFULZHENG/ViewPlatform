@@ -54,6 +54,14 @@ QString UserDbHelper::getUserInfoByPhone(const QString &phone)
     return query.next() ? query.value(0).toString() : "";
 }
 
+// 根据手机号查询用户信息
+QString UserDbHelper::getUserUUIDByPhone(const QString &phone)
+{
+    QString sql = "SELECT id FROM sys_user WHERE phone=?";
+    QSqlQuery query = m_baseDbHelper->execPrepareQuery(sql, {phone});
+    return query.next() ? query.value(0).toString() : "";
+}
+
 // 返回值改为 QHash<QString, QString>，键=列名，值=列值
 QHash<QString, QString> UserDbHelper::getUserInfoByUUID(const QString &UUID)
 {

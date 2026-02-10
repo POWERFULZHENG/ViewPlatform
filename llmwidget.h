@@ -11,6 +11,7 @@
 #include <QNetworkReply>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QLabel>
 #include "BaseDbHelper.h"
 #include "ApiConfigDialog.h"
 
@@ -61,6 +62,7 @@ private:
     int m_currentUserId = -1;
     int m_currentDialogId = -1;
     QString m_selectedModelCode;
+    QString m_fileContent;
 
     // 2. 网络请求相关
     QNetworkAccessManager *m_netManager = nullptr;
@@ -84,7 +86,8 @@ private:
     // 6. UI 控件（列表/编辑框）
     QListWidget *m_dialogList = nullptr;
     QTextEdit *m_chatContentEdit = nullptr;
-    QLineEdit *m_inputEdit = nullptr;
+    QTextEdit *m_inputEdit = nullptr;
+    QLabel *m_uploadedFileLabel = nullptr;
 
     // 7. UI 控件（模型选择）
     QComboBox *m_modelCombo = nullptr;

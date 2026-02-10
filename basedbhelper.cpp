@@ -3,7 +3,7 @@
 #include <QCoreApplication>
 #include <QSqlError>
 #include <QCryptographicHash>
-#include <QDebug>
+#include "loghelper.h"
 #include <QSqlQuery>
 #include <QFile>
 
@@ -31,10 +31,10 @@ BaseDbHelper::BaseDbHelper(QObject *parent) : QObject(parent)
         readDbConfig(); // 读取配置文件
     }
     // 打印连接参数（调试用，确认配置生效）
-    qDebug() << "✅ 数据库连接参数绑定成功："
+    LOG_DEBUG("数据库模块", "数据库连接参数绑定成功："
              << "用户：" << m_db.userName()
              << "主机：" << m_db.hostName()
-             << "库名：" << m_db.databaseName();
+             << "库名：" << m_db.databaseName());
 }
 
 // 析构函数：安全关闭连接
@@ -181,12 +181,12 @@ bool BaseDbHelper::beginTransaction()
     if(!checkDbConn()) return false;
     if(m_db.transaction())
     {
-        qDebug() << "事务开始成功";
+        LOG_INFO("数据库模块", "事务开始成功");
         return true;
     }
     else
     {
-        qCritical() << "事务开始失败：" << getLastError();
+        LOG_ERROR("数据库模块", "事务开始失败：" << getLastError());
         return false;
     }
 }
@@ -197,12 +197,12 @@ bool BaseDbHelper::commitTransaction()
     if(!m_db.isOpen()) return false;
     if(m_db.commit())
     {
-        qDebug() << "事务提交成功";
+        LOG_DEBUG("数据库模块", "事务提交成功");
         return true;
     }
     else
     {
-        qCritical() << "事务提交失败，自动回滚：" << getLastError();
+        LOG_ERROR("数据库模块", "事务提交失败，自动回滚：" << getLastError());
         m_db.rollback();
         return false;
     }
@@ -214,12 +214,12 @@ bool BaseDbHelper::rollbackTransaction()
     if(!m_db.isOpen()) return false;
     if(m_db.rollback())
     {
-        qDebug() << "事务回滚成功";
+        LOG_DEBUG("数据库模块", "事务回滚成功");
         return true;
     }
     else
     {
-        qCritical() << "事务回滚失败：" << getLastError();
+        LOG_ERROR("数据库模块", "事务回滚失败：" << getLastError());
         return false;
     }
 }
@@ -270,7 +270,7 @@ bool BaseDbHelper::execBatchPrepareSql(const QString &sql, const QList<QVariantL
 }
 
 // 错误信息获取
-QString BaseDbHelper::getLastError() const
+QString BaseDbHelper::getLastError()
 {
     return QString("错误码：%1 \n错误信息：%2").arg(m_db.lastError().number()).arg(m_db.lastError().text());
 }

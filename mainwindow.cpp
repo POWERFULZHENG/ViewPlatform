@@ -18,7 +18,7 @@
 #include <QListWidget>
 #include <QTextEdit>
 #include <QGroupBox>
-#include <QDebug>
+#include "loghelper.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QPushButton>
@@ -47,7 +47,7 @@ MainWindow::MainWindow(QString loginUserPhone, QWidget *parent)
     m_userInfo.userPhone = userInfoHash["phone"];
     m_userInfo.userRole = userInfoHash["role_name"];
     m_userInfo.UUID = userInfoHash["id"].toInt();
-    qDebug() << m_userInfo.UUID << ": I am id.";
+    LOG_DEBUG("主窗口模块", "当前用户ID：" << m_userInfo.UUID);
 
     // 初始化核心模块
     m_testTableModel = new TestTableModel(this);

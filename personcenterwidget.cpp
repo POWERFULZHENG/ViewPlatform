@@ -10,7 +10,7 @@
 #include <QPixmap>
 #include <QIcon>
 #include <QPainter>
-#include <QDebug>
+#include "loghelper.h"
 
 
 // ===================== 构造函数【初始化列表顺序】 =====================
@@ -85,7 +85,6 @@ void PersonCenterWidget::initPersonCenter()
             border: 1px solid #E5E5E5;
             border-radius: 8px;
             padding: 5px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06); /* 轻微阴影，提升层次感 */
         }
         QWidget:hover {
             border: 1px solid #1E90FF; /* 悬浮高亮边框，保留你的逻辑 */
@@ -209,7 +208,7 @@ void PersonCenterWidget::renderPersonInfo()
         m_phoneLabel->setStyleSheet("QLabel{font-size:15px; color:#999999; padding-left:5px;}");
         return;
     }
-    qDebug() << "render-" << m_loginPersonPhone ;
+    LOG_DEBUG("个人中心模块", "用户手机号：" << m_loginPersonPhone) ;
     // 调用数据库工具类，查询用户信息
     UserDbHelper userDbHelper;
     QString personPhone = userDbHelper.getUserInfoByPhone(m_loginPersonPhone);
@@ -227,7 +226,7 @@ void PersonCenterWidget::renderPersonInfo()
     }
 }
 
-// ===================== 核心修复：事件过滤器，完美监听鼠标悬停/离开 =====================
+// ===================== 事件过滤器，完美监听鼠标悬停/离开 =====================
 bool PersonCenterWidget::eventFilter(QObject *watched, QEvent *event)
 {
     // 修复3：前置精准过滤，只处理【按钮/面板】的事件，其他控件事件直接返回，不处理不打印
@@ -241,7 +240,7 @@ bool PersonCenterWidget::eventFilter(QObject *watched, QEvent *event)
     {
         m_isHovering = true;
         slot_showPersonCenter();
-        qDebug() << "eventFilter-正常悬浮触发-" << m_loginPersonPhone ;
+        LOG_DEBUG("个人中心模块", "正常悬浮触发");
         return true; // 我们处理了这个事件
     }
     else if (event->type() == QEvent::Leave)
@@ -251,7 +250,7 @@ bool PersonCenterWidget::eventFilter(QObject *watched, QEvent *event)
         QTimer::singleShot(200, this, [=](){
             if(!m_isHovering) slot_hidePersonCenter();
         });
-        qDebug() << "eventFilter-正常离开触发-" << m_loginPersonPhone ;
+        LOG_DEBUG("个人中心模块", "正常离开触发") ;
         return true; // 我们处理了这个事件
     }
     // 其他事件（例如鼠标点击、绘制、焦点等等）不要吞掉，交给基类默认处理

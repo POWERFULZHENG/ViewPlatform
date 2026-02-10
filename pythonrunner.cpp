@@ -3,7 +3,7 @@
 #include <QDateTime>
 #include <QJsonDocument>
 #include <QStandardPaths>
-#include <QDebug>
+#include "loghelper.h"
 
 PythonRunner::PythonRunner(QObject *parent) : QObject(parent) {
     m_process = new QProcess(this);

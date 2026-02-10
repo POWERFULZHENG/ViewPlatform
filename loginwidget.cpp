@@ -5,9 +5,11 @@
 #include <QHBoxLayout>
 #include <QSpacerItem>
 #include <QRegExp>
-#include <QDebug>
+#include "loghelper.h"
 #include <QInputDialog>
 #include <QIcon>
+#include "logmanager.h"
+#include "iphelper.h"
 
 LoginWidget::LoginWidget(QWidget *parent)
     : QDialog(parent)
@@ -22,7 +24,7 @@ LoginWidget::LoginWidget(QWidget *parent)
     initConnect();// 绑定信号槽
 }
 
-// ===================== 私有核心方法：初始化界面 =====================
+// ===================== 初始化界面 =====================
 void LoginWidget::initUi()
 {
     // 1. 初始化基础控件
@@ -232,6 +234,11 @@ void LoginWidget::slot_loginCheck()
     // 数据库查询
     UserDbHelper userDbHelper;
 
+    // 获取客户端IP（支持IPv4/IPv6）
+    QString ip = IPHelper::getLocalIP();
+    // 从sys_user表查询当前用户ID（必须非空，因为表中user_id字段NOT NULL）
+    int UUID = userDbHelper.getUserUUIDByPhone(strPhone).toInt();
+
     // 分支1：密码登录
     if(m_rBtnPwdLogin->isChecked())
     {
@@ -246,6 +253,12 @@ void LoginWidget::slot_loginCheck()
         {
             m_bLoginSuccess = true;
             m_curLoginPhone = strPhone; // ====== 赋值当前登录手机号 ======
+            // 登录成功：记录INFO级别日志
+            ADD_BASE_LOG("登录模块",
+                         QString("用户[%1]登录成功，登录时间：%2").arg(strPhone).arg(QDateTime::currentDateTime().toString()),
+                         userDbHelper.getUserUUIDByPhone(strPhone).toInt(),
+                         "login",
+                         IPHelper::getLocalIP());
             QMessageBox::information(this, "登录成功", "密码登录成功，即将进入主界面！");
             this->accept(); // 新增这一行，设置对话框的返回值为 Accepted
             this->close(); // 关闭登录窗口
@@ -270,6 +283,12 @@ void LoginWidget::slot_loginCheck()
         {
             m_bLoginSuccess = true;
             m_curLoginPhone = strPhone; // ====== 新增：赋值当前登录手机号 ======
+            // 登录成功：记录INFO级别日志
+            ADD_BASE_LOG("登录模块",
+                         QString("用户[%1]登录成功，登录时间：%2").arg(strPhone).arg(QDateTime::currentDateTime().toString()),
+                         UUID,
+                         "login",
+                         ip);
             QMessageBox::information(this, "登录成功", "验证码登录成功，即将进入主界面！");
             this->accept(); // 新增这一行，设置对话框的返回值为 Accepted
             this->close(); // 关闭登录窗口

@@ -20,9 +20,12 @@ SOURCES += \
     basedbhelper.cpp \
     baseeditdialog.cpp \
     configwidget.cpp \
+    iphelper.cpp \
     llmwidget.cpp \
     logdbhelper.cpp \
+    loghelper.cpp \
     loginwidget.cpp \
+    logmanager.cpp \
     logtablewidget.cpp \
     main.cpp \
     mainwindow.cpp \
@@ -40,9 +43,12 @@ HEADERS += \
     basedbhelper.h \
     baseeditdialog.h \
     configwidget.h \
+    iphelper.h \
     llmwidget.h \
     logdbhelper.h \
+    loghelper.h \
     loginwidget.h \
+    logmanager.h \
     logtablewidget.h \
     mainwindow.h \
     personcenterwidget.h \

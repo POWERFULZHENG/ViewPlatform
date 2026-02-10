@@ -1,6 +1,8 @@
 #include "ConfigWidget.h"
 #include "ui_ConfigWidget.h"
-#include <QDebug>
+#include "loghelper.h"
+#include "logmanager.h"
+#include "iphelper.h"
 #include <QMessageBox>
 #include <QDesktopServices>
 #include <QFileDialog>
@@ -545,6 +547,14 @@ void ConfigWidget::onPythonScriptFinished(bool success, const QDateTime& execTim
     if (m_testDbHelper->updateTestRecord(targetRecord)) {
         loadTestRecords(); // 刷新表格
         if (success) {
+            ADD_BASE_LOG("算法模块",
+                         QString("[%1] ✅ 算法测试执行成功（测试名称：%2，代号：%3）").arg(
+                                         execTime.toString("yyyy-MM-dd HH:mm:ss"),
+                                         m_currentTestName,
+                                         m_currentTestCode),
+                         m_UUID,
+                         "algorithms",
+                         IPHelper::getLocalIP());
             ui->textEditLog->append(QString("[%1] ✅ 算法测试执行成功（测试名称：%2，代号：%3）").arg(
                 execTime.toString("yyyy-MM-dd HH:mm:ss"),
                 m_currentTestName,
@@ -556,7 +566,15 @@ void ConfigWidget::onPythonScriptFinished(bool success, const QDateTime& execTim
             ));
             QMessageBox::information(this, "执行成功", "Python脚本执行完成，结果已保存！");
         } else {
-            ui->textEditLog->append(QString("[%1] ❌ 算法测试执行失败（测试名称：%2，代号：%3）").arg(
+            ADD_BASE_LOG("算法模块",
+                         QString("[%1] 算法测试执行失败（测试名称：%2，代号：%3）").arg(
+                                         execTime.toString("yyyy-MM-dd HH:mm:ss"),
+                                         m_currentTestName,
+                                         m_currentTestCode),
+                         m_UUID,
+                         "Algorithms",
+                         IPHelper::getLocalIP());
+            ui->textEditLog->append(QString("[%1] 算法测试执行失败（测试名称：%2，代号：%3）").arg(
                 execTime.toString("yyyy-MM-dd HH:mm:ss"),
                 m_currentTestName,
                 m_currentTestCode

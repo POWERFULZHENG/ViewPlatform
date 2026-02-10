@@ -2,7 +2,7 @@
 #include "usereditdialog.h" // 新建/编辑用户的对话框，下文提供
 #include <QSqlQuery>
 #include <QSqlError>
-#include <QDebug>
+#include "loghelper.h"
 
 UserTableWidget::UserTableWidget(QWidget *parent) : TableOperateWidget(parent)
 {
@@ -29,7 +29,7 @@ void UserTableWidget::loadTableData()
     m_tableWidget->setRowCount(0);
     UserDbHelper userDbHelper;
     QSqlQuery query = userDbHelper.getAllUserList();
-    qDebug() << "userloadTableData: " << query.size();
+    LOG_DEBUG("用户信息模块", "用户信息数量: " << query.size());
     int row = 0;
     while(query.next())
     {
