@@ -14,6 +14,13 @@ QSqlQuery LogDbHelper::getAllLogList(int UUID)
     return query;
 }
 
+QSqlQuery LogDbHelper::getAllLogList()
+{
+    QString sql = "SELECT * FROM sys_log ORDER BY log_id DESC";
+    QSqlQuery query = m_baseDbHelper->execPrepareQuery(sql, {});
+    return query;
+}
+
 // 搜索日志
 QSqlQuery LogDbHelper::searchLogByKey(const QString &key)
 {

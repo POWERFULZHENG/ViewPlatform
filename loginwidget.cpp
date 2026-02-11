@@ -10,6 +10,7 @@
 #include <QIcon>
 #include "logmanager.h"
 #include "iphelper.h"
+#include "forgetpwddialog.h"
 
 LoginWidget::LoginWidget(QWidget *parent)
     : QDialog(parent)
@@ -259,7 +260,7 @@ void LoginWidget::slot_loginCheck()
                          userDbHelper.getUserUUIDByPhone(strPhone).toInt(),
                          "login",
                          IPHelper::getLocalIP());
-            QMessageBox::information(this, "登录成功", "密码登录成功，即将进入主界面！");
+//            QMessageBox::information(this, "登录成功", "密码登录成功，即将进入主界面！");
             this->accept(); // 新增这一行，设置对话框的返回值为 Accepted
             this->close(); // 关闭登录窗口
         }
@@ -307,38 +308,36 @@ void LoginWidget::slot_loginCheck()
 }
 
 
-// ========== 核心修改：忘记密码 对接MySQL数据库 ==========
+// ========== 忘记密码 对接MySQL数据库 ==========
 void LoginWidget::slot_forgetPwd()
 {
+    // 1. 基础校验：手机号合法性
     QString strPhone = m_editPhone->text().trimmed();
-    if(!checkPhoneLegal(strPhone))
-    {
+    if (!checkPhoneLegal(strPhone)) {
         QMessageBox::warning(this, "提示", "请先输入合法的11位手机号！");
         return;
     }
-    // 获取原密码和新密码
-    QString strOldPwd = QInputDialog::getText(this, "忘记密码", "请输入原密码：", QLineEdit::Password);
-    if(strOldPwd.isEmpty()) return;
-    QString strNewPwd = QInputDialog::getText(this, "忘记密码", "请输入新密码：", QLineEdit::Password);
-    if(strNewPwd.isEmpty()) return;
-    QString strConfirmPwd = QInputDialog::getText(this, "忘记密码", "请确认新密码：", QLineEdit::Password);
-    if(strConfirmPwd != strNewPwd)
-    {
-        QMessageBox::warning(this, "提示", "两次输入的新密码不一致！");
+
+    // 2. 校验手机号是否注册
+    UserDbHelper userDbHelper;
+    if (!userDbHelper.checkPhoneExist(strPhone)) {
+        QMessageBox::warning(this, "提示", "该手机号未注册，无法重置密码！");
         return;
     }
-    // 调用数据库修改密码
-    UserDbHelper userDbHelper;
-    userDbHelper.modifyUserPwd(strPhone, strOldPwd, strNewPwd);
-    m_editPwd->clear();
+
+    // 3. 弹出整合式忘记密码弹窗
+    ForgetPwdDialog forgetDlg(strPhone, this);
+    if (forgetDlg.exec() == QDialog::Accepted) {
+        // 重置成功后，清空登录窗口的密码框
+        m_editPwd->clear();
+    }
 }
 
-// ========== 核心修改：注册账号 对接MySQL数据库 ==========
+// ========== 注册账号 对接MySQL数据库 ==========
 bool LoginWidget::slot_registerAccount()
 {
     UserEditDialog userRegisterDialog(this, BaseEditDialog::Oper_Create);
     userRegisterDialog.setWindowTitle("注册新用户");
-    qDebug() << "slot_registerAccount" ;
     return userRegisterDialog.exec() == QDialog::Accepted;
 //    QString strPhone = m_editPhone->text().trimmed();
 //    if(!checkPhoneLegal(strPhone))

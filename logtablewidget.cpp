@@ -5,14 +5,13 @@
 #include <QMessageBox>
 #include "logdbhelper.h"
 
-LogTableWidget::LogTableWidget(int UUID, QWidget *parent) : TableOperateWidget(parent)
+LogTableWidget::LogTableWidget(QWidget *parent) : TableOperateWidget(parent)
 {
     this->setWindowTitle("系统监控");
     // ========== 执行表格初始化 ==========
     this->initTable();
     // 失能一些可以改变日志的按钮
     disabledChangeLogsBtn();
-    m_UUID = UUID;
 }
 
 void LogTableWidget::disabledChangeLogsBtn()
@@ -35,11 +34,11 @@ void LogTableWidget::initTableHeader()
     m_tableWidget->setColumnWidth(0, 80);  // 日志ID
     m_tableWidget->setColumnWidth(1, 100); // 用户ID
     m_tableWidget->setColumnWidth(2, 100); // 操作类型
-    m_tableWidget->setColumnWidth(3, 250);  // 操作内容
+    m_tableWidget->setColumnWidth(3, 150);  // 操作内容
     m_tableWidget->setColumnWidth(4, 120); // IP地址
     m_tableWidget->setColumnWidth(5, 100); // 日志级别
-    m_tableWidget->setColumnWidth(6, 150); // 模块名称
-    m_tableWidget->setColumnWidth(7, 180); // 创建时间
+    m_tableWidget->setColumnWidth(6, 100); // 模块名称
+    m_tableWidget->setColumnWidth(7, 170); // 创建时间
 }
 
 // 加载日志数据：适配sys_log表字段 + 关联sys_user查询用户名
@@ -53,7 +52,13 @@ void LogTableWidget::loadTableData()
     // SELECT l.log_id, u.username, l.operation_type, l.log_level, l.module_name, l.operation_content, l.ip_address, l.create_time
     // FROM sys_log l LEFT JOIN sys_user u ON l.user_id = u.id
     // WHERE 你的筛选条件（如UUID相关）
-    QSqlQuery query = logDbHelper.getAllLogList(m_UUID);
+    QSqlQuery query;
+    if(UserSession::instance()->userRole() == "超级管理员") {
+        query = logDbHelper.getAllLogList();
+    }else {
+        query = logDbHelper.getAllLogList(UserSession::instance()->userId());
+    }
+
     LOG_DEBUG("用户信息模块", "查询到日志条数：" << query.size());
 
     int row = 0;

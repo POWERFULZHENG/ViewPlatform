@@ -3,13 +3,14 @@
 #include "loghelper.h"
 #include "logmanager.h"
 #include "iphelper.h"
+#include "usersession.h"
 #include <QMessageBox>
 #include <QDesktopServices>
 #include <QFileDialog>
 #include <QTableView>
 #include <QHeaderView>
 
-ConfigWidget::ConfigWidget(TestTableModel *testTableModel, int UUID, QWidget *parent) :
+ConfigWidget::ConfigWidget(TestTableModel *testTableModel, QWidget *parent) :
     QWidget(parent),
     ui(new Ui::ConfigWidget)
 {
@@ -20,7 +21,6 @@ ConfigWidget::ConfigWidget(TestTableModel *testTableModel, int UUID, QWidget *pa
     m_testDbHelper = TestDbHelper::getInstance();
     m_pythonRunner = new PythonRunner(this);
     m_testTableModel = testTableModel;
-    m_UUID = UUID;
 
     // 绑定信号槽
     connect(ui->btnStartAlgorithm, &QPushButton::clicked, this, &ConfigWidget::onBtnStartAlgorithmClicked);
@@ -447,7 +447,13 @@ void ConfigWidget::on_btnCancel_clicked() {
 // ========== 核心业务逻辑槽函数 ==========
 void ConfigWidget::loadTestRecords()
 {
-    QList<TestRecord> records = m_testDbHelper->getAllTestRecords(m_UUID);
+    QList<TestRecord> records;
+    if(UserSession::instance()->userRole() == "超级管理员") {
+        records = m_testDbHelper->getAllTestRecords();
+    }else {
+        records = m_testDbHelper->getAllTestRecords(UserSession::instance()->userId());
+    }
+
     m_testTableModel->loadTestRecords(records);
     ui->textEditLog->append(QString("[%1] 已加载 %2 条测试记录").arg(QDateTime::currentDateTime().toString("yyyy-MM-dd HH:mm:ss")).arg(records.size()));
 }
@@ -467,7 +473,7 @@ void ConfigWidget::onConfigConfirmed(const ConfigParams& params)
     // 保存配置参数到数据库
     int configId = -1;
 //    qDebug() << m_UUID << ": I am user id.";
-    if (!m_testDbHelper->saveConfigParams(params, m_UUID, configId)) {
+    if (!m_testDbHelper->saveConfigParams(params, UserSession::instance()->userId(), configId)) {
         QMessageBox::critical(this, "数据库错误", "保存配置参数失败！");
         this->setEditLocked(false); // 解锁编辑
         return;
@@ -480,7 +486,7 @@ void ConfigWidget::onConfigConfirmed(const ConfigParams& params)
 
     // 保存测试记录（基础信息）
     TestRecord record;
-    record.UUID = m_UUID;
+    record.UUID = UserSession::instance()->userId();
     record.test_name = m_currentTestName;
     record.test_code = m_currentTestCode;
     record.params_detail = paramsDetail;
@@ -522,7 +528,7 @@ void ConfigWidget::onPythonScriptFinished(bool success, const QDateTime& execTim
     this->setEditLocked(false);
 
     // 3. 更新测试记录
-    QList<TestRecord> records = m_testDbHelper->getAllTestRecords(m_UUID);
+    QList<TestRecord> records = m_testDbHelper->getAllTestRecords(UserSession::instance()->userId());
     TestRecord targetRecord;
     for (const TestRecord& record : records) {
         if (record.test_name == m_currentTestName && record.test_code == m_currentTestCode && record.config_id == m_currentConfigId) {
@@ -538,7 +544,7 @@ void ConfigWidget::onPythonScriptFinished(bool success, const QDateTime& execTim
     }
 
     // 更新测试记录
-    targetRecord.UUID = m_UUID;
+    targetRecord.UUID = UserSession::instance()->userId();
     targetRecord.execute_time = execTime;
     targetRecord.metrics_data = metricsData;
     targetRecord.result_path = m_pythonRunner->getResultPath();
@@ -552,7 +558,7 @@ void ConfigWidget::onPythonScriptFinished(bool success, const QDateTime& execTim
                                          execTime.toString("yyyy-MM-dd HH:mm:ss"),
                                          m_currentTestName,
                                          m_currentTestCode),
-                         m_UUID,
+                         UserSession::instance()->userId(),
                          "algorithms",
                          IPHelper::getLocalIP());
             ui->textEditLog->append(QString("[%1] ✅ 算法测试执行成功（测试名称：%2，代号：%3）").arg(
@@ -571,7 +577,7 @@ void ConfigWidget::onPythonScriptFinished(bool success, const QDateTime& execTim
                                          execTime.toString("yyyy-MM-dd HH:mm:ss"),
                                          m_currentTestName,
                                          m_currentTestCode),
-                         m_UUID,
+                         UserSession::instance()->userId(),
                          "Algorithms",
                          IPHelper::getLocalIP());
             ui->textEditLog->append(QString("[%1] 算法测试执行失败（测试名称：%2，代号：%3）").arg(
@@ -800,7 +806,7 @@ void ConfigWidget::onBtnStartAlgorithmClicked()
 
     // 5. 保存配置参数到数据库
     int configId = -1;
-    if (!m_testDbHelper->saveConfigParams(params, m_UUID, configId)) {
+    if (!m_testDbHelper->saveConfigParams(params, UserSession::instance()->userId(), configId)) {
         QMessageBox::critical(this, "数据库错误", "保存配置参数失败！");
         // 恢复状态
         this->setEditLocked(false);
@@ -816,7 +822,7 @@ void ConfigWidget::onBtnStartAlgorithmClicked()
 
     // 7. 保存测试记录（基础信息）
     TestRecord record;
-    record.UUID = m_UUID;
+    record.UUID = UserSession::instance()->userId();
     record.test_name = m_currentTestName;
     record.test_code = m_currentTestCode;
     record.params_detail = paramsDetail;
@@ -886,7 +892,7 @@ void ConfigWidget::onBtnInterruptClicked()
     ));
 
     // 6. 更新测试记录备注
-    QList<TestRecord> records = m_testDbHelper->getAllTestRecords(m_UUID);
+    QList<TestRecord> records = m_testDbHelper->getAllTestRecords(UserSession::instance()->userId());
     for (TestRecord& record : records) {
         if (record.test_name == m_currentTestName && record.test_code == m_currentTestCode && record.config_id == m_currentConfigId) {
             record.remark = "手动中断";

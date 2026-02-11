@@ -304,7 +304,6 @@ bool TestDbHelper::updateTestRecord(const TestRecord& record) {
             metrics_data = ?, execute_time = ?, remark = ?
         WHERE test_id = ?
     )";
-//    qDebug() << record.execute_time;
     QVariantList paramsList = {
         record.UUID, record.config_id, record.test_name, record.test_code, record.params_detail,
         record.result_path, record.metrics_data, record.execute_time.toString("yyyy-MM-dd HH:mm:ss"),
@@ -333,6 +332,30 @@ QList<TestRecord> TestDbHelper::getAllTestRecords(int UUID) {
     QList<TestRecord> records;
     QString sql = "SELECT * FROM test_records WHERE user_id = ? ORDER BY test_id DESC";
     QSqlQuery query = m_dbHelper->execPrepareQuery(sql, {UUID});
+
+    while (query.next()) {
+        TestRecord record;
+        record.test_id = query.value("test_id").toInt();
+        record.UUID = query.value("user_id").toInt();
+        record.config_id = query.value("config_id").toInt();
+        record.test_name = query.value("test_name").toString();
+        record.test_code = query.value("test_code").toString();
+        record.params_detail = query.value("params_detail").toString();
+        record.result_path = query.value("result_path").toString();
+        record.metrics_data = query.value("metrics_data").toString();
+        record.execute_time = QDateTime::fromString(query.value("execute_time").toString(), "yyyy-MM-dd'T'HH:mm:ss.zzz");
+        record.remark = query.value("remark").toString();
+//        qDebug() << record.execute_time << query.value("execute_time").toString();
+        records.append(record);
+    }
+
+    return records;
+}
+
+QList<TestRecord> TestDbHelper::getAllTestRecords() {
+    QList<TestRecord> records;
+    QString sql = "SELECT * FROM test_records ORDER BY test_id DESC";
+    QSqlQuery query = m_dbHelper->execPrepareQuery(sql, {});
 
     while (query.next()) {
         TestRecord record;

@@ -22,7 +22,7 @@ class ConfigWidget : public QWidget
     Q_OBJECT
 
 public:
-    explicit ConfigWidget(TestTableModel *testTableModel, int UUID, QWidget *parent = nullptr);
+    explicit ConfigWidget(TestTableModel *testTableModel, QWidget *parent = nullptr);
     ~ConfigWidget();
 
     // 加载配置参数到界面
@@ -76,7 +76,6 @@ private:
     int m_currentConfigId;                 // 当前配置ID
     QString m_currentTestName;             // 当前测试名称
     QString m_currentTestCode;             // 当前测试代号
-    int m_UUID;
 public:
     // 初始化UI控件
     void initUI();

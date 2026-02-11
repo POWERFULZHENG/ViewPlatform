@@ -26,6 +26,7 @@ private slots:
     // UI 操作槽函数
     void onToggleDialogListClicked();
     void onRenameDialogActionTriggered();
+    void onDelDialogActionTriggered();
     void onDialogListContextMenuRequested(const QPoint &pos);
     void onConfigBtnClicked();
     void onNewDialogBtnClicked();
@@ -76,6 +77,7 @@ private:
     // 4. UI 控件（菜单/动作）
     QMenu *m_dialogContextMenu = nullptr;
     QAction *m_renameAction = nullptr;
+    QAction *m_delAction = nullptr;
 
     // 5. UI 控件（按钮-通用）
     QPushButton *m_toggleBtn = nullptr;

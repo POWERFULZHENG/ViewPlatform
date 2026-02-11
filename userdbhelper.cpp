@@ -46,6 +46,12 @@ bool UserDbHelper::modifyUserPwd(const QString &phone, const QString &oldPwd, co
     return m_baseDbHelper->execPrepareSql(sqlUpdate, {m_baseDbHelper->encryptPwd(newPwd), phone});
 }
 
+bool UserDbHelper::modifyUserPwdByPhone(const QString& phone, const QString& newPwd)
+{
+    QString sqlUpdate = "UPDATE sys_user SET pwd=? WHERE phone=?";
+    return m_baseDbHelper->execPrepareSql(sqlUpdate, {m_baseDbHelper->encryptPwd(newPwd), phone});
+}
+
 // 根据手机号查询用户信息
 QString UserDbHelper::getUserInfoByPhone(const QString &phone)
 {

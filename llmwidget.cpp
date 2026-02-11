@@ -48,6 +48,7 @@ LLMWidget::LLMWidget(int currentUserId, QWidget *parent)
       // 4. UI 控件（菜单/动作）
       m_dialogContextMenu(nullptr),
       m_renameAction(nullptr),
+      m_delAction(nullptr),
 
       // 5. UI 控件（按钮-通用）
       m_toggleBtn(nullptr),
@@ -119,7 +120,7 @@ void LLMWidget::initUI()
     topLayout->addWidget(m_addModelBtn);
     topLayout->addStretch();
 
-    // ========== 左侧对话列表（修改：添加历史对话标签） ==========
+    // ========== 左侧对话列表（添加历史对话标签） ==========
     m_dialogList = new QListWidget(this);
     m_dialogList->setMinimumWidth(220);
     m_dialogList->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -143,7 +144,9 @@ void LLMWidget::initUI()
     // 右键菜单
     m_dialogContextMenu = new QMenu(m_dialogList);
     m_renameAction = new QAction("重命名", m_dialogContextMenu);
+    m_delAction = new QAction("删除", m_dialogContextMenu);
     m_dialogContextMenu->addAction(m_renameAction);
+    m_dialogContextMenu->addAction(m_delAction);
 
     // ========== 右侧聊天区域（核心：公式渲染） ==========
     m_chatContentEdit = new QTextEdit(this);
@@ -189,7 +192,7 @@ void LLMWidget::initUI()
     m_uploadedFileLabel->setVisible(false); // 初始隐藏
     m_uploadedFileLabel->setToolTip("已上传的文件信息");
 
-    // 底部布局（修改：添加文件显示标签）
+    // 底部布局（添加文件显示标签）
     QHBoxLayout *bottomLayout = new QHBoxLayout();
 //    bottomLayout->addWidget(m_inputEdit);
     bottomLayout->addWidget(m_fileBtn);
@@ -204,7 +207,7 @@ void LLMWidget::initUI()
     rightLayout->addWidget(m_inputEdit);
     rightLayout->addLayout(bottomLayout);
 
-    // 主布局（修改：添加封装后的左侧Widget）
+    // 主布局（添加封装后的左侧Widget）
     QHBoxLayout *mainLayout = new QHBoxLayout();
     mainLayout->addWidget(leftWidget);  // 替换原来的 m_dialogList
     mainLayout->addLayout(rightLayout, 1);
@@ -219,6 +222,7 @@ void LLMWidget::initUI()
     connect(m_dialogList, &QListWidget::customContextMenuRequested,
             this, &LLMWidget::onDialogListContextMenuRequested);
     connect(m_renameAction, &QAction::triggered, this, &LLMWidget::onRenameDialogActionTriggered);
+    connect(m_delAction, &QAction::triggered, this, &LLMWidget::onDelDialogActionTriggered);
 
     connect(configBtn, &QPushButton::clicked, this, &LLMWidget::onConfigBtnClicked);
     connect(newDialogBtn, &QPushButton::clicked, this, &LLMWidget::onNewDialogBtnClicked);
@@ -813,7 +817,7 @@ void LLMWidget::onCancelBtnClicked()
     m_currentReply->abort();
 }
 
-// ---------- 发送按钮槽函数（修改：清空文件显示） ----------
+// ---------- 发送按钮槽函数（清空文件显示） ----------
 void LLMWidget::onSendBtnClicked()
 {
     if (m_isRequestProcessing || m_currentReply != nullptr) {
@@ -837,7 +841,7 @@ void LLMWidget::onSendBtnClicked()
     }
 }
 
-// ---------- 文件上传槽函数（修改：添加UI显示逻辑） ----------
+// ---------- 文件上传槽函数（添加UI显示逻辑） ----------
 void LLMWidget::onFileBtnClicked()
 {
     if (m_isRequestProcessing || m_currentReply != nullptr) {
@@ -924,7 +928,7 @@ void LLMWidget::onAddModelBtnClicked()
     loadModelList();
 }
 
-// ---------- 新建对话槽函数（修改：清空文件显示） ----------
+// ---------- 新建对话槽函数（清空文件显示） ----------
 void LLMWidget::onNewDialogBtnClicked()
 {
     if (m_chatContentEdit && !m_chatContentEdit->toPlainText().isEmpty()) {
@@ -944,14 +948,14 @@ void LLMWidget::onNewDialogBtnClicked()
     loadHistoryDialogs();
 }
 
-// ---------- 对话项点击槽函数（修改：清空文件显示） ----------
+// ---------- 对话项点击槽函数（清空文件显示） ----------
 void LLMWidget::onDialogItemClicked(QListWidgetItem *item)
 {
     if (!item) return;
     int id = item->data(Qt::UserRole).toInt();
     loadDialogById(id);
 
-    // 新增：切换对话时清空文件内容和显示
+    // 切换对话时清空文件内容和显示
     m_fileContent.clear();
     if (m_uploadedFileLabel) {
         m_uploadedFileLabel->clear();
@@ -1012,11 +1016,89 @@ void LLMWidget::onRenameDialogActionTriggered()
     }
 }
 
+void LLMWidget::onDelDialogActionTriggered()
+{
+    // 1. 校验基础控件和选中项
+    if (!m_dialogList) return;
+    QListWidgetItem *curItem = m_dialogList->currentItem();
+    if (!curItem) {
+        QMessageBox::warning(this, "警告", "请先选中要删除的对话！");
+        return;
+    }
+
+    // 2. 获取对话ID和标题（用于确认提示）
+    int dialogId = curItem->data(Qt::UserRole).toInt();
+    LOG_DEBUG("LLM模块", "【删除对话】对话ID：" << dialogId);
+    QString dialogTitle = curItem->text();
+    if (dialogId <= 0) {
+        LOG_ERROR("LLM模块", "【删除对话】无效的对话ID：" << dialogId);
+        QMessageBox::critical(this, "错误", "无效的对话ID，无法删除！");
+        return;
+    }
+
+    // 3. 二次确认（防止误删）
+    QMessageBox::StandardButton confirmBtn = QMessageBox::question(
+        this,
+        "确认删除",
+        QString("是否确定删除对话「%1」？\n删除后数据将无法恢复！").arg(dialogTitle),
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::No // 默认选中“取消”
+    );
+    if (confirmBtn != QMessageBox::Yes) {
+        LOG_DEBUG("LLM模块", "【删除对话】用户取消删除，对话ID：" << dialogId);
+        return;
+    }
+
+    // 4. 数据库操作（对齐重命名的数据库逻辑）
+    BaseDbHelper *db = BaseDbHelper::getInstance();
+    if (!db || !db->checkDbConn()) {
+        LOG_ERROR("LLM模块", "【删除对话】数据库实例为空或未连接");
+        QMessageBox::critical(this, "错误", "数据库连接失败，无法删除对话！");
+        return;
+    }
+
+    // 5. 执行删除SQL（使用预处理语句，防止SQL注入）
+    QString deleteSql = QString(
+        "DELETE FROM chat_dialog WHERE id = %1 AND user_id = %2"
+    ).arg(dialogId).arg(m_currentUserId);
+
+    // 执行删除操作（对齐重命名的错误处理逻辑）
+    if (db->execQuery(deleteSql).lastError().isValid()) {
+        LOG_ERROR("LLM模块", "【删除对话】执行失败：" << db->getLastError());
+        QMessageBox::critical(this, "错误", "删除对话失败：" + db->getLastError());
+        return;
+    }
+
+    // 6. 删除成功后的UI和状态清理
+    LOG_DEBUG("LLM模块", "【删除对话】成功，对话ID：" << dialogId);
+
+    // 如果删除的是当前正在查看的对话，清空聊天区域并重置状态
+    if (dialogId == m_currentDialogId) {
+        m_currentDialogId = -1; // 重置当前对话ID
+        if (m_chatContentEdit) {
+            m_chatContentEdit->clear(); // 清空聊天内容
+        }
+        if (m_inputEdit) {
+            m_inputEdit->clear(); // 清空输入框
+        }
+        // 清空文件相关状态
+        m_fileContent.clear();
+        if (m_uploadedFileLabel) {
+            m_uploadedFileLabel->clear();
+            m_uploadedFileLabel->setVisible(false);
+        }
+    }
+
+    // 7. 更新对话列表并提示成功
+    loadHistoryDialogs(); // 重新加载历史对话列表（自动移除已删除项）
+    QMessageBox::information(this, "成功", QString("对话「%1」已成功删除！").arg(dialogTitle));
+}
+
 // ---------- API配置槽函数 ----------
 void LLMWidget::onConfigBtnClicked()
 {
-    ApiConfigDialog dlg(m_currentUserId, this);
-    if (dlg.exec() == QDialog::Accepted) {
+    ApiConfigDialog apiConfigDialog(this);
+    if (apiConfigDialog.exec() == QDialog::Accepted) {
         loadModelList();
     }
 }

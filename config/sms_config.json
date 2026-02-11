@@ -1,0 +1,8 @@
+{
+  "aliyun_sms": {
+    "access_key_id": "LTAI5tRqyekRSt4P4bgn9rJ2",
+    "access_key_secret": "Z6y2QpYXWSKcJBMiCHE45hELb47rl4",
+    "sign_name": "平台测试",
+    "template_code": "SMS_332105216"
+  }
+}

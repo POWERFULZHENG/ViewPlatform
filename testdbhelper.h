@@ -116,7 +116,8 @@ public:
     bool addTestRecord(const TestRecord& record);                    // 添加测试记录
     bool updateTestRecord(const TestRecord& record);                 // 更新测试记录
     bool deleteTestRecord(int testId);                               // 删除测试记录
-    QList<TestRecord> getAllTestRecords(int UUID);                           // 获取所有测试记录
+    QList<TestRecord> getAllTestRecords(int UUID);                           // 获取当前用户的测试记录
+    QList<TestRecord> getAllTestRecords();                           // 获取所有测试记录
 
 private:
     TestDbHelper(QObject *parent = nullptr);

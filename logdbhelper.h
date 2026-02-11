@@ -14,6 +14,7 @@ public:
 
     // 日志查询操作
     QSqlQuery getAllLogList(int UUID);
+    QSqlQuery getAllLogList();
     QSqlQuery searchLogByKey(const QString &key);
     // 插入日志：参数顺序与最终sys_log表字段对齐
     bool insertLog(int user_id,                     // 关联用户ID
@@ -24,7 +25,6 @@ public:
                    const QString& module_name);     // 模块名称
 private:
     BaseDbHelper *m_baseDbHelper; // 依赖通用数据库层
-    int m_UUID;
 };
 
 #endif // LOGDBHELPER_H

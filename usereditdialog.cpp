@@ -3,6 +3,7 @@
 #include <QSqlQuery>
 #include <QSqlError>
 #include "userdbhelper.h"
+#include "usersession.h"
 
 UserEditDialog::UserEditDialog(QWidget *parent, DialogOperType type)
     : BaseEditDialog(parent, type)
@@ -17,6 +18,7 @@ void UserEditDialog::initUserForm()
 {
     // 初始化表单控件
     m_editUserId = new QLineEdit(this);
+    m_editUserId->setVisible(false);
     m_editUserName = new QLineEdit(this);
     m_editNickName = new QLineEdit(this);
     m_cbxRoleName = new QComboBox(this);
@@ -25,11 +27,19 @@ void UserEditDialog::initUserForm()
     m_cbxStatus = new QComboBox(this);
 
     // 下拉框赋值，与数据库枚举值对应
-    m_cbxRoleName->addItems({"超级管理员","普通用户","游客"});
-    m_cbxStatus->addItem("禁用",0);
-    m_cbxStatus->addItem("启用",1);
+    m_cbxRoleName->addItems({"超级管理员","普通用户"});
+    m_cbxStatus->addItem("启用",0);
+    m_cbxStatus->addItem("禁用",1);
+    if(!UserSession::instance()->isUserLogin()) {
+        m_cbxRoleName->setCurrentIndex(1);
+        m_cbxRoleName->setEnabled(false);
+        // 设置默认选中项
+        m_cbxStatus->setCurrentIndex(0);
+        // 禁用该下拉框（失能）
+        m_cbxStatus->setVisible(false);
+    }
 
-    // ========== 修复1：创建表单布局【不变】 ==========
+    // ========== 创建表单布局 ==========
     QFormLayout *formLayout = new QFormLayout;
     // 设置表单标签宽度，对齐方式，优化显示效果
     formLayout->setLabelAlignment(Qt::AlignRight);
@@ -42,7 +52,9 @@ void UserEditDialog::initUserForm()
     formLayout->addRow("用户角色",m_cbxRoleName);
     formLayout->addRow("手机号",m_editPhone);
     formLayout->addRow("密码",m_editPwd);
-    formLayout->addRow("账号状态",m_cbxStatus);
+    if(UserSession::instance()->isUserLogin()) {
+        formLayout->addRow("账号状态",m_cbxStatus);
+    }
 
     // 1. 父布局添加子布局 必须用 addLayout() 而不是 addItem()
     // 2. 先添加【表单布局】，再添加【按钮布局】，控件从上到下正常展示

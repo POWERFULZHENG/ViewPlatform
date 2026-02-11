@@ -1,13 +1,13 @@
 #include "ApiConfigDialog.h"
+#include "usersession.h"
 #include <QMessageBox>
 #include <QSqlQuery>
 
-ApiConfigDialog::ApiConfigDialog(int currentUserId, QWidget *parent)
+ApiConfigDialog::ApiConfigDialog(QWidget *parent)
     : QDialog(parent)
-    , m_currentUserId(currentUserId)
 {
     // 窗口配置
-    this->setWindowTitle("API配置（多用户独立）");
+    this->setWindowTitle("API配置");
     this->setFixedSize(450, 220);
 
     // 控件初始化
@@ -51,7 +51,7 @@ void ApiConfigDialog::loadConfig()
 {
     BaseDbHelper *dbHelper = BaseDbHelper::getInstance();
     // 查询当前用户的API配置
-    QString sql = QString("SELECT api_url, api_key, model, temperature FROM user_api_config WHERE user_id = %1").arg(m_currentUserId);
+    QString sql = QString("SELECT api_url, api_key, model, temperature FROM user_api_config WHERE user_id = %1").arg(UserSession::instance()->userId());
     QSqlQuery query = dbHelper->execQuery(sql);
     if (query.next()) {
         m_apiUrlEdit->setText(query.value(0).toString());
@@ -80,7 +80,7 @@ void ApiConfigDialog::saveConfig()
 
     BaseDbHelper *dbHelper = BaseDbHelper::getInstance();
     // 先查询是否存在配置（存在则更新，不存在则插入）
-    QString checkSql = QString("SELECT id FROM user_api_config WHERE user_id = %1").arg(m_currentUserId);
+    QString checkSql = QString("SELECT id FROM user_api_config WHERE user_id = %1").arg(UserSession::instance()->userId());
     QSqlQuery checkQuery = dbHelper->execQuery(checkSql);
 
     if (checkQuery.next()) {
@@ -89,7 +89,7 @@ void ApiConfigDialog::saveConfig()
             UPDATE user_api_config
             SET api_url = ?, api_key = ?, model = ?, temperature = ?
             WHERE user_id = %1
-        )").arg(m_currentUserId);
+        )").arg(UserSession::instance()->userId());
         QVariantList params = {apiUrl, apiKey, model, temperature};
         if (dbHelper->execPrepareSql(updateSql, params)) {
             QMessageBox::information(this, "成功", "API配置更新成功！");
@@ -102,7 +102,7 @@ void ApiConfigDialog::saveConfig()
         QString insertSql = QString(R"(
             INSERT INTO user_api_config (user_id, api_url, api_key, model, temperature)
             VALUES (%1, ?, ?, ?, ?)
-        )").arg(m_currentUserId);
+        )").arg(UserSession::instance()->userId());
         QVariantList params = {apiUrl, apiKey, model, temperature};
         if (dbHelper->execPrepareSql(insertSql, params)) {
             QMessageBox::information(this, "成功", "API配置保存成功！");

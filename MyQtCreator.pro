@@ -20,6 +20,7 @@ SOURCES += \
     basedbhelper.cpp \
     baseeditdialog.cpp \
     configwidget.cpp \
+    forgetpwddialog.cpp \
     iphelper.cpp \
     llmwidget.cpp \
     logdbhelper.cpp \
@@ -31,11 +32,13 @@ SOURCES += \
     mainwindow.cpp \
     personcenterwidget.cpp \
     pythonrunner.cpp \
+    smshelper.cpp \
     tableoperatewidget.cpp \
     testdbhelper.cpp \
     testtablemodel.cpp \
     userdbhelper.cpp \
     usereditdialog.cpp \
+    usersession.cpp \
     usertablewidget.cpp
 
 HEADERS += \
@@ -43,6 +46,7 @@ HEADERS += \
     basedbhelper.h \
     baseeditdialog.h \
     configwidget.h \
+    forgetpwddialog.h \
     iphelper.h \
     llmwidget.h \
     logdbhelper.h \
@@ -53,11 +57,13 @@ HEADERS += \
     mainwindow.h \
     personcenterwidget.h \
     pythonrunner.h \
+    smshelper.h \
     tableoperatewidget.h \
     testdbhelper.h \
     testtablemodel.h \
     userdbhelper.h \
     usereditdialog.h \
+    usersession.h \
     usertablewidget.h
 
 FORMS += \

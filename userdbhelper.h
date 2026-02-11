@@ -18,6 +18,7 @@ public:
     bool userLogin(const QString &phone, const QString &pwd);
     bool checkPhoneExist(const QString &phone);
     bool modifyUserPwd(const QString &phone, const QString &oldPwd, const QString &newPwd);
+    bool modifyUserPwdByPhone(const QString& phone, const QString& newPwd);
     QString getUserInfoByPhone(const QString &phone);
     QHash<QString, QString> getUserInfoByUUID(const QString &UUID);
     QString getUserUUIDByPhone(const QString &phone);

@@ -29,7 +29,7 @@
    <bool>false</bool>
   </property>
   <property name="styleSheet">
-   <string notr="true">QWidget { background-color: #D3D3D3 }</string>
+   <string notr="true"/>
   </property>
   <layout class="QFormLayout" name="formLayout">
    <item row="0" column="0">
@@ -52,7 +52,7 @@
        <item>
         <widget class="QLineEdit" name="lineEditTestName">
          <property name="placeholderText">
-          <string>请输入测试代号（如：TEST_20240109_001）</string>
+          <string>请输入测试名称</string>
          </property>
         </widget>
        </item>
@@ -102,7 +102,7 @@
        <item>
         <widget class="QLineEdit" name="lineEditTestCode">
          <property name="placeholderText">
-          <string>请输入测试代号（如：TEST_20240109_001）</string>
+          <string>请输入测试代号（如：TEST_001）</string>
          </property>
         </widget>
        </item>
@@ -201,7 +201,7 @@ QPushButton:disabled{background-color:#cccccc;}</string>
            <rect>
             <x>0</x>
             <y>0</y>
-            <width>367</width>
+            <width>354</width>
             <height>3324</height>
            </rect>
           </property>

@@ -3,12 +3,13 @@
 
 #include "tableoperatewidget.h"
 #include "logdbhelper.h"
+#include "usersession.h"
 
 class LogTableWidget : public TableOperateWidget
 {
     Q_OBJECT
 public:
-    explicit LogTableWidget(int UUID, QWidget *parent = nullptr);
+    explicit LogTableWidget(QWidget *parent = nullptr);
     void loadTableData() override;    // 加载用户数据
 
 protected:
@@ -20,7 +21,6 @@ protected:
     void slot_searchFilter() override;// 用户表筛选
 private:
     void disabledChangeLogsBtn();
-    int m_UUID;
 };
 
 #endif // LOGTABLEWIDGET_H

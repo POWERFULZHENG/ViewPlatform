@@ -38,12 +38,14 @@ void UserTableWidget::loadTableData()
         m_tableWidget->setItem(row,1,new QTableWidgetItem(query.value(1).toString()));
         m_tableWidget->setItem(row,2,new QTableWidgetItem(query.value(2).toString()));
         m_tableWidget->setItem(row,3,new QTableWidgetItem(query.value(3).toString()));
-        m_tableWidget->setItem(row,4,new QTableWidgetItem(query.value(4).toString()));
-        m_tableWidget->setItem(row,5,new QTableWidgetItem(query.value(5).toString()));
-        m_tableWidget->setItem(row,6,new QTableWidgetItem(query.value(6).toInt()==1?"启用":"禁用"));
+        QString phone = query.value(4).toString();
+        QString maskPhone = phone.left(3) + "****" + phone.right(4);
+        m_tableWidget->setItem(row,4,new QTableWidgetItem(maskPhone));
+        m_tableWidget->setItem(row,5,new QTableWidgetItem("******"));
+        m_tableWidget->setItem(row,6,new QTableWidgetItem(query.value(5).toInt()==0?"启用":"禁用"));
         m_tableWidget->setItem(row,7,new QTableWidgetItem(query.value(7).toString()));
-//        m_tableWidget->setItem(row,8,new QTableWidgetItem(query.value(8).toString()));
         row++;
+        LOG_DEBUG("用户信息模块", "pwd: " << query.value(6).toString());
     }
 }
 
@@ -66,10 +68,11 @@ bool UserTableWidget::slot_editData(int selectRow)
     QString roleName = m_tableWidget->item(selectRow,3)->text();
     QString phone = m_tableWidget->item(selectRow,4)->text();
     QString pwd = m_tableWidget->item(selectRow,5)->text();
-    int status = m_tableWidget->item(selectRow,6)->text()=="启用"?1:0;
+    int status = m_tableWidget->item(selectRow,6)->text()=="启用"?0:1;
 
     UserEditDialog dlg(this, UserEditDialog::Oper_Edit);
     dlg.setFormData(userId,userName,nickName,roleName,phone,pwd,status);
+    loadTableData();
     return dlg.exec() == QDialog::Accepted;
 }
 
@@ -77,6 +80,7 @@ bool UserTableWidget::slot_editData(int selectRow)
 bool UserTableWidget::slot_deleteData(int selectRow)
 {
     int userId = m_tableWidget->item(selectRow,0)->text().toInt();
+    LOG_DEBUG("用户信息模块", "id: " << userId);
     UserDbHelper userDbHelper;
     bool res = userDbHelper.delUserById(userId);
     if(res)
@@ -90,7 +94,7 @@ bool UserTableWidget::slot_deleteData(int selectRow)
     return res;
 }
 
-// 用户表高级筛选：可筛选 角色、状态、创建时间范围 等【待改】
+// 用户表高级筛选：可筛选 角色、状态、创建时间范围 等
 void UserTableWidget::slot_advancedFilter()
 {
     QMessageBox::information(this,"待开发","待开发，耐心等待！");
@@ -135,9 +139,11 @@ void UserTableWidget::slot_searchFilter()
         m_tableWidget->setItem(row,1,new QTableWidgetItem(query.value(1).toString()));
         m_tableWidget->setItem(row,2,new QTableWidgetItem(query.value(2).toString()));
         m_tableWidget->setItem(row,3,new QTableWidgetItem(query.value(3).toString()));
-        m_tableWidget->setItem(row,4,new QTableWidgetItem(query.value(4).toString()));
-        m_tableWidget->setItem(row,5,new QTableWidgetItem(query.value(5).toString()));
-        m_tableWidget->setItem(row,6,new QTableWidgetItem(query.value(6).toInt()==1?"启用":"禁用"));
+        QString phone = query.value(4).toString();
+        QString maskPhone = phone.left(3) + "****" + phone.right(4);
+        m_tableWidget->setItem(row,4,new QTableWidgetItem(maskPhone));
+        m_tableWidget->setItem(row,5,new QTableWidgetItem("***"));
+        m_tableWidget->setItem(row,6,new QTableWidgetItem(query.value(6).toInt()==0?"启用":"禁用"));
         m_tableWidget->setItem(row,7,new QTableWidgetItem(query.value(7).toString()));
         row++;
     }

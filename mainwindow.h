@@ -15,17 +15,18 @@
 #include "TestDbHelper.h"
 #include "ui_ConfigWidget.h"
 #include "llmwidget.h"
+#include "UserSession.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 namespace Ui { class ConfigWidget; }
 QT_END_NAMESPACE
 
-struct UserInfo{
-    int UUID;
-    QString userRole;
-    QString userPhone;
-};
+//struct UserInfo{
+//    int UUID;
+//    QString userRole;
+//    QString userPhone;
+//};
 
 class MainWindow : public QMainWindow
 {
@@ -34,6 +35,7 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QString loginUserPhone, QWidget *parent = nullptr);
     ~MainWindow();
+    bool isAdmin() const;
      void initAllLayout();
      void initMenuBar();
      void initToolBar();
